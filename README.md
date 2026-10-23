@@ -56,3 +56,35 @@ series = {SIGCSETS 2025}
 
 ## Contact
 For questions, bugs, or feature requests, please use the [Github Issues page](https://github.com/Maxflow-Visualization/iFlow/issues). Otherwise, contact the [iFlow Team](mailto:ymy@apache.org).
+
+## DAA Course Project
+# Campus Evacuation Capacity Analyzer
+
+### Objective
+To model a building as a graph and analyze its evacuation capacity using graph algorithms.
+
+### DAA Concepts
+- Graph Theory
+- Ford-Fulkerson Algorithm
+- Edmonds-Karp Algorithm
+- Breadth-First Search (BFS)
+- Residual Graph
+- Maximum Flow and Minimum Cut
+- Time and Space Complexity Analysis
+
+### Planned Features
+- Represent classrooms, corridors, staircases and exits as a graph.
+- Assign capacity values to evacuation routes.
+- Compare normal and blocked-corridor scenarios.
+- Identify critical bottlenecks.
+- Display maximum-flow and minimum-cut results.
+
+### Original Project
+This project is based on the open-source iFlow visualizer.
+
+Repository: https://github.com/Maxflow-Visualization/iFlow
+
+### Current Progress
+Phase 0: Repository setup, baseline testing and initial customization.
+
+Note: Planned features will be marked complete only after implementation and testing.
