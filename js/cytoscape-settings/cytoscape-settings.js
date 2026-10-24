@@ -4,7 +4,7 @@ cytoscapeSettings = {
         {
             selector: "node",
             css: {
-                content: "data(id)",
+                content: "data(name)",
                 "text-valign": "center",
                 "text-halign": "center",
                 "background-color": "white",
@@ -18,6 +18,12 @@ cytoscapeSettings = {
                 "padding-left": "5px",
                 "border-width": 2,
                 "border-color": "black",
+                "font-size": "10px",
+                "text-wrap": "wrap",
+                "text-max-width": "70px",
+                "width": "label",
+                "height": "label",
+                "shape": "roundrectangle",
             },
         },
         {

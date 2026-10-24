@@ -15,6 +15,8 @@ var states = [SELECT_PATH, CHOOSE_FLOW, UPDATE_RESIDUAL_GRAPH];
 var stateIndex = 0;
 
 var originalFlowNetwork = [];
+var originalSource = null;
+var originalSink = null;
 var showOriginalCapacitiesAndCurrentFlow = false;
 
 function doShowOriginalCapacitiesAndCurrentFlow() {
@@ -52,7 +54,7 @@ function removeOriginalCapacitiesAndCurrentFlow() {
 
 $(function () {
   const GRAPH_CREATION_INSTRUCTIONS =
-    "<li>In this step, you will construct a graph to run maxflow on.</li><li>Double click on the white space to add a node.</li><li>Click an existing node and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that node.</li><li>Right click a node to set it as the source/sink.</li><li>Hover on/click an existing node n1 to generate a dot on top. Click and drag the dot to another node n2 to generate an edge from n1 to n2.</li><li>Click an existing edge and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that edge.</li><li>Right click an edge to change its capacity.</li><li>Click <code>Clear</code> at the bottom to clear the entire graph. Click <code>Example</code> to bring up the example graph.</li><li>You can download the current graph for future convenient importing by clicking <code>Download Edgelist</code>. To import a graph (supports edgelist and csv format), click <code>Choose File</code>.</li><li>Don't forget to set the source and sink! Once you are ready, click <code>Start Practice</code>!</li>";
+    "<li>Build or load a directed graph representing a building evacuation network. Nodes represent rooms, corridor junctions, staircases, and exits. Edge capacities are in <b>people per minute</b> (illustrative model inputs).</li><li>Click <code>Load Evacuation Example</code> to load a predefined campus evacuation graph, or <code>Example</code> for the generic 8-node graph.</li><li>Double click on the white space to add a node.</li><li>Click an existing node and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that node.</li><li>Right click a node to set it as the source/sink.</li><li>Hover on/click an existing node n1 to generate a dot on top. Click and drag the dot to another node n2 to generate an edge from n1 to n2.</li><li>Click an existing edge and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that edge.</li><li>Right click an edge to change its capacity.</li><li>Click <code>Clear</code> at the bottom to clear the entire graph.</li><li>You can download the current graph for future convenient importing by clicking <code>Download Edgelist</code>. To import a graph (supports edgelist and csv format), click <code>Choose File</code>.</li><li>Don't forget to set the source and sink! Once you are ready, click <code>Start Practice</code>!</li><li style='margin-top:6px;color:#888;font-size:12px;'><em>Note: Maximum flow measures modeled network throughput. This tool does not predict exact real-world evacuation time.</em></li>";
   const SELECT_PATH_INSTRUCTIONS =
     "<li>In this step, you will choose yourself or let the algorithm choose an augmenting path.</li><li>To choose an augmenting path yourself, click all the edges on your desired path (order doesn't matter).</li><li>To let the algorithm choose an augmenting path, click one of the <code>Choose Shortest Path</code> (Edmonds-Karp), <code>Choose Random Path</code> (Ford-Fulkerson), <code>Choose Widest Path</code> (Capacity Scaling).</li><li>Once an augmenting path is chosen, click <code>Confirm Path</code>. If the chosen path is valid, you will proceed to the next step. Otherwise the system will tell why the path is not valid.</li><li>Once you think you have found the max flow, click <code>Confirm Max Flow Found!</code> on the right to verify your max flow.</li><li>Once you think you have found the max flow, you can click on nodes to form a min-cut, click <code>Validate Selected Min Cut</code> to verify. Note that you can provide either a S-cut or T-cut, our tool will interpret your selected cut as both S-cut and T-cut and if any one is valid, your selected cut is a valid min cut.</li><li>Alternatively, you can click <code>Find Min Cut</code> to automatically find a min S-cut.</li>";
   const CHOOSE_FLOW_INSTRUCTIONS =
@@ -352,12 +354,15 @@ $(function () {
 
       var edges = cy.edges();
 
+      originalFlowNetwork = [];
       edges.forEach(function (edge) {
         var label = edge.css("label");
         originalFlowNetwork.push(
           new Edge(edge.source().id(), edge.target().id(), label)
         );
       });
+      originalSource = source;
+      originalSink = sink;
 
       $("#instructions-state").html("<b>Select Path:</b>");
       $("#instructions").html(SELECT_PATH_INSTRUCTIONS);
@@ -410,6 +415,14 @@ $(function () {
           edge.source,
           edge.target
         );
+      }
+      // restore source and sink from snapshot
+      if (originalSource !== null) {
+        source = originalSource;
+        sink = originalSink;
+        $("#source").text("Source=" + source);
+        $("#sink").text("Sink=" + sink);
+        highlightSourceAndSink();
       }
     }
   });
@@ -822,6 +835,7 @@ $(function () {
             name: "cose",
             boundingBox: expandedBoundingBox,
           });
+          layout.run();
           break;
         default:
           console.log("No choice");

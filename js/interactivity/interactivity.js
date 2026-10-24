@@ -55,10 +55,15 @@ $("html").keydown(backspaceOrDeleteRemoveElement);
 
 // "CLEAR" BUTTON TO CLEAR THE CY DRAWBOARD
 function clearDrawboard(e){
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   cy.nodes().remove();
   cy.edges().remove();
 
+  source = "";
+  sink = "";
+  originalFlowNetwork = [];
+  originalSource = null;
+  originalSink = null;
   $("#source").text("Source=");
   $("#sink").text("Sink=");
 
@@ -70,9 +75,11 @@ $("#clear").on("click", clearDrawboard);
 // "EXAMPLE" BUTTON TO CREATE THE EXAMPLE GRAPH
 function createExampleGraph(e) {
   $("#clear").triggerHandler("click");
-  e.preventDefault();
-  $("#source").text("Source=1");
-  $("#sink").text("Sink=8");
+  if (e && e.preventDefault) e.preventDefault();
+  source = "1";
+  sink = "8";
+  $("#source").text("Source=" + source);
+  $("#sink").text("Sink=" + sink);
   var nodes = [
     { id: 1, name: 1, x: 150, y: 240 },
     { id: 2, name: 2, x: 300, y: 150 },
@@ -104,8 +111,12 @@ function createExampleGraph(e) {
   edges.forEach(function (edge) {
     addEdge(cy, edge.id, { label: edge.label }, edge.source, edge.target);
   });
+  cancelHighlightedNodes();
+  highlightSourceAndSink();
 }
 $("#example-graph").on("click", createExampleGraph);
+// Bind the evacuation example button
+$("#evacuation-graph").on("click", createEvacuationGraph);
 // Bring up the example graph initially when user opens the website
 $("#example-graph").trigger("click");
 

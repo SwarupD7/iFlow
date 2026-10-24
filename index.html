@@ -37,17 +37,33 @@
                 <div id="helper-text" style="z-index: 9999;">
                   <b id="instructions-state">Graph Creation:</b>
                   <ul id="instructions" style="padding-left: 22px;">
-                    <li>In this step, you will construct a graph to run maxflow on.</li>
-                    <li>Double click on the white space to add a node.</li><li>Click an existing node and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that node.</li>
+                    <li>Build or load a directed graph representing a building evacuation network. Nodes represent rooms, corridor junctions, staircases, and exits. Edge capacities are in <b>people per minute</b> (illustrative model inputs).</li>
+                    <li>Click <code>Load Evacuation Example</code> to load a predefined campus evacuation graph, or <code>Example</code> for the generic 8-node graph.</li>
+                    <li>Double click on the white space to add a node.</li>
+                    <li>Click an existing node and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that node.</li>
                     <li>Right click a node to set it as the source/sink.</li>
                     <li>Hover on/click an existing node n1 to generate a dot on top. Click and drag the dot to another node n2 to generate an edge from n1 to n2.</li>
                     <li>Click an existing edge and then press the keyboard's <code>Backspace</code> or <code>Delete</code> (<code>fn</code> + <code>Delete</code> on Mac) to delete that edge.</li>
                     <li>Right click an edge to change its capacity.</li>
-                    <li>Click <code>Clear</code> at the bottom to clear the entire graph. Click <code>Example</code> to bring up the example graph.</li>
+                    <li>Click <code>Clear</code> at the bottom to clear the entire graph.</li>
                     <li>You can download the current graph for future convenient importing by clicking <code>Download Edgelist</code>. To import a graph (supports edgelist and csv format), click <code>Choose File</code>.</li>
                     <li>Once you are ready, click <code>Start Practice</code>!</li>
+                    <li style="margin-top:6px;color:#888;font-size:12px;"><em>Note: Maximum flow measures modeled network throughput. This tool does not predict exact real-world evacuation time.</em></li>
                   </ul>
                 </div>
+              </div>
+            </div>
+            <div class="ibox float-e-margins" style="padding: 0 !important">
+              <div class="ibox-content" id="legend-panel">
+                <b style="font-size: large;">Legend</b>
+                <ul style="padding-left: 18px; margin-top: 6px; font-size: 13px; list-style: none;">
+                  <li><span style="display:inline-block;width:14px;height:14px;background:#87CEEB;border:1px solid #333;border-radius:3px;vertical-align:middle;margin-right:5px;"></span> Source node</li>
+                  <li><span style="display:inline-block;width:14px;height:14px;background:#FFCCCB;border:1px solid #333;border-radius:3px;vertical-align:middle;margin-right:5px;"></span> Sink node</li>
+                  <li><span style="display:inline-block;width:14px;height:14px;background:white;border:2px solid black;border-radius:3px;vertical-align:middle;margin-right:5px;"></span> Intermediate node</li>
+                  <li style="margin-top:3px;">→ Directed passage</li>
+                  <li>Edge label = capacity (people/min)</li>
+                  <li style="margin-top:5px; color:#888; font-size:11px;"><em>Max flow = network throughput, not evacuation time</em></li>
+                </ul>
               </div>
             </div>
           </div>
@@ -103,9 +119,12 @@
                   Start Practice
                 </button>
               </div>
-              <div class="col-md-6 buttons" id="graph-creation">
+              <div class="col-md-8 buttons" id="graph-creation">
                 <button class="btn btn-info btn-sm modification" id="example-graph" type="submit">
                   Example
+                </button>
+                <button class="btn btn-success btn-sm modification" id="evacuation-graph" type="submit">
+                  Load Evacuation Example
                 </button>
                 <button class="btn btn-danger btn-sm modification" id="clear" type="submit">
                   Clear
@@ -196,6 +215,7 @@
   <script src="js/cytoscape-settings/cytoscape-settings.js"></script>
   <script src="js/app.js"></script>
   <script src="js/interactivity/interactivity-helper.js"></script>
+  <script src="js/evacuation-graph.js"></script>
   <script src="js/interactivity/interactivity.js"></script>
   <script src="js/model/max-flow.js"></script>
   <script src="js/model/priority-queue.js"></script>

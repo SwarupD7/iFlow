@@ -102,20 +102,26 @@ function cancelHighlightedEdge(source, target) {
   edge.css("target-arrow-color", "lightgray");
 }
 
-// For some reason this function needs to be called in multiple places that shouldn't need to call it
+// Highlight source with blue (#87CEEB) and sink with pink (#FFCCCB)
 function highlightSourceAndSink() {
-  cy.style()
-    .selector("#" + source)
-    .style({
-      "background-color": "#87CEEB",
-    })
-    .update();
-  cy.style()
-    .selector("#" + sink)
-    .style({
-      "background-color": "#FFCCCB",
-    })
-    .update();
+  if (source) {
+    cy.style()
+      .selector("#" + source)
+      .style({
+        "background-color": "#87CEEB",
+      })
+      .update();
+    cy.$("#" + source).style("background-color", "#87CEEB");
+  }
+  if (sink) {
+    cy.style()
+      .selector("#" + sink)
+      .style({
+        "background-color": "#FFCCCB",
+      })
+      .update();
+    cy.$("#" + sink).style("background-color", "#FFCCCB");
+  }
 }
 
 // Cancel all highlights

@@ -33,8 +33,21 @@ body {
   font-size: medium;
 }
 
-.btn-info, .btn-danger {
+.btn-info, .btn-danger, .btn-success {
   margin-right: 10px;
+}
+
+#legend-panel {
+  padding: 10px 14px !important;
+}
+
+#legend-panel ul {
+  padding-left: 0 !important;
+  margin-bottom: 0;
+}
+
+#legend-panel li {
+  margin-bottom: 4px;
 }
 
 /* for right click */
