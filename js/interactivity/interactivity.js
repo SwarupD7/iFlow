@@ -56,6 +56,9 @@ $("html").keydown(backspaceOrDeleteRemoveElement);
 // "CLEAR" BUTTON TO CLEAR THE CY DRAWBOARD
 function clearDrawboard(e){
   if (e && e.preventDefault) e.preventDefault();
+  if (typeof exitManualPracticeMode === "function" && typeof inGraphCreation === "function" && !inGraphCreation()) {
+    exitManualPracticeMode(false);
+  }
   cy.nodes().remove();
   cy.edges().remove();
 
@@ -69,17 +72,36 @@ function clearDrawboard(e){
 
   $("#status").text("");
   $("#label").val("");
+
+  if (typeof clearAnalysisResults === "function") {
+    clearAnalysisResults();
+  }
+  if (typeof isEvacuationActive !== "undefined") {
+    isEvacuationActive = false;
+  }
 }
 $("#clear").on("click", clearDrawboard);
 
 // "EXAMPLE" BUTTON TO CREATE THE EXAMPLE GRAPH
 function createExampleGraph(e) {
+  if (typeof exitManualPracticeMode === "function") {
+    exitManualPracticeMode(false);
+  }
   $("#clear").triggerHandler("click");
   if (e && e.preventDefault) e.preventDefault();
   source = "1";
   sink = "8";
   $("#source").text("Source=" + source);
   $("#sink").text("Sink=" + sink);
+
+  if (typeof isEvacuationActive !== "undefined") {
+    isEvacuationActive = false;
+  }
+  if (typeof clearAnalysisResults === "function") {
+    clearAnalysisResults();
+  }
+  $("#scenario-badge").html('<span class="label label-default">Generic Example</span> <span style="color:#555;font-size:12px;">Standard 8-node network loaded.</span>');
+
   var nodes = [
     { id: 1, name: 1, x: 150, y: 240 },
     { id: 2, name: 2, x: 300, y: 150 },

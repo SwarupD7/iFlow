@@ -91,6 +91,39 @@ cytoscapeSettings = {
                 "transition-duration": "0.5s",
             },
         },
+        {
+            selector: ".min-cut-edge",
+            css: {
+                "line-color": "#d9534f",
+                "target-arrow-color": "#d9534f",
+                width: 6,
+                "line-style": "solid",
+                "font-weight": "bold",
+                "color": "#d9534f",
+                "transition-property": "line-color, target-arrow-color, width",
+                "transition-duration": "0.4s",
+            },
+        },
+        {
+            selector: ".blocked-edge",
+            css: {
+                "line-color": "#d9534f",
+                "target-arrow-color": "#d9534f",
+                "line-style": "dashed",
+                width: 3,
+                "color": "#d9534f",
+            },
+        },
+        {
+            selector: ".restricted-edge",
+            css: {
+                "line-color": "#f0ad4e",
+                "target-arrow-color": "#f0ad4e",
+                "line-style": "dashed",
+                width: 4,
+                "color": "#f0ad4e",
+            },
+        },
     ],
     layout: {
         name: "preset",

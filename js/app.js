@@ -304,6 +304,116 @@ $(function () {
     }
   });
 
+  var selectedEdge = null;
+  var selectedNodes = new Set();
+  var selectedPath = [];
+  var oldFlowNetwork = null;
+  var totalflow = 0;
+  var flow = 0;
+
+  /**
+   * Safely exits manual practice mode and resets all practice UI/controls
+   * back to the initial Graph Creation mode.
+   *
+   * @param {boolean} restoreOriginalGraph - If true, restores cy edges from originalFlowNetwork snapshot (for Start Over)
+   */
+  function exitManualPracticeMode(restoreOriginalGraph) {
+    // 1. Reset graph block layout & hide finalization sidebar
+    $("#graph-block").addClass("col-lg-10").removeClass("col-lg-8");
+    $("#finalization-block").css("display", "none");
+
+    // 2. Reset practice button style and text
+    $("#start-practice").css("background-color", "#1ab394").text("Start Practice");
+
+    // 3. Reset internal state machine to initial graph creation state
+    stateIndex = 0;
+    state = states[stateIndex];
+    $("#state").text("State: Graph Creation");
+
+    // 4. Clear practice-specific path, flow, and node tracking
+    selectedPath = [];
+    if (selectedNodes && typeof selectedNodes.clear === "function") {
+      selectedNodes.clear();
+    }
+    $("#history").html("");
+    totalflow = 0;
+    flow = 0;
+    oldFlowNetwork = null;
+
+    // 5. Hide all practice-mode controls, buttons, and ending actions
+    hideElementAndItsChildren(".proceed-step");
+    hideElementAndItsChildren("#applied-capacity");
+    hideElementAndItsChildren(".buttons");
+    hideElementAndItsChildren(".ending-actions");
+    hideElementAndItsChildren("#select-path");
+    hideElementAndItsChildren("#choose-flow");
+    hideElementAndItsChildren("#update-residual-graph");
+
+    // 6. Show graph creation controls
+    showElementAndItsChildren("#" + GRAPH_CREATION);
+    showElementAndItsChildren("#clear");
+    showElementAndItsChildren("#mouse-label");
+    showElementAndItsChildren("#mouse-update");
+    hideElementAndItsChildren("#fileInput");
+
+    // 7. Clean up original capacities / current flow overlay if toggled
+    if (showOriginalCapacitiesAndCurrentFlow) {
+      removeOriginalCapacitiesAndCurrentFlow();
+      showOriginalCapacitiesAndCurrentFlow = false;
+      $("#applied-capacity").css("background-color", "#1ab394").text("Show Original Capacities and Current Flow");
+    }
+    removeOriginalCapacitiesAndCurrentFlow();
+
+    // 8. Reset highlights, enable edgehandles, and unlock nodes
+    cancelHighlightedElements();
+    cancelHighlightedNodes();
+    if (typeof clearMinCutHighlights === "function") {
+      clearMinCutHighlights();
+    }
+    highlightSourceAndSink();
+
+    if (cy && cy.edgehandles) {
+      try { cy.edgehandles("enable"); } catch (e) {}
+    }
+    if (cy && cy.nodes) {
+      try { cy.nodes().unlock(); } catch (e) {}
+    }
+
+    // 9. Restore graph creation instructions
+    $("#instructions-state").html("<b>Graph Creation:</b>");
+    $("#instructions").html(GRAPH_CREATION_INSTRUCTIONS);
+
+    // 10. Restore original graph if requested (e.g. clicking "Start Over from the Beginning")
+    if (restoreOriginalGraph) {
+      cy.edges().remove();
+      for (const edge of originalFlowNetwork) {
+        addEdge(
+          cy,
+          edge.source + "-" + edge.target,
+          { label: edge.capacity },
+          edge.source,
+          edge.target
+        );
+      }
+      if (originalSource !== null) {
+        source = originalSource;
+        sink = originalSink;
+        $("#source").text("Source=" + source);
+        $("#sink").text("Sink=" + sink);
+        highlightSourceAndSink();
+      }
+    } else {
+      originalFlowNetwork = [];
+      originalSource = null;
+      originalSink = null;
+    }
+
+    // 11. Recalculate centering and resize
+    resizeAndCenterAccordingToCurrentGraphBlock();
+  }
+
+  window.exitManualPracticeMode = exitManualPracticeMode;
+
   // Graph creation completed, disable graph modification and enter practice mode
   $("#start-practice").on("click", function (event) {
     event.preventDefault();
@@ -339,6 +449,7 @@ $(function () {
       resizeAndCenterAccordingToCurrentGraphBlock();
 
       hideElementAndItsChildren(".buttons");
+      if (typeof clearAnalysisResults === "function") clearAnalysisResults();
       state = states[stateIndex];
       showElementAndItsChildren(".ending-actions");
       showElementAndItsChildren("#" + state);
@@ -367,68 +478,13 @@ $(function () {
       $("#instructions-state").html("<b>Select Path:</b>");
       $("#instructions").html(SELECT_PATH_INSTRUCTIONS);
     } else {
-      // increase graph block's size, hide finalization block
-      $("#graph-block").addClass("col-lg-10").removeClass("col-lg-8");
-      $("#finalization-block").css("display", "none");
-      resizeAndCenterAccordingToCurrentGraphBlock();
-
-      stateIndex = 0;
-
-      cancelHighlightedElements();
-      selectedPath = [];
-      selectedNodes = new Set();
-      $("#history").html("");
-      totalflow = 0;
-      cy.edgehandles("enable");
-      cancelHighlightedNodes();
-      highlightSourceAndSink();
-
-      $(this).css("background-color", "#1ab394");
-      $(this).text("Start Practice");
-
-      $("#state").text("State: Graph Creation");
-      hideElementAndItsChildren(".proceed-step");
-      hideElementAndItsChildren("#applied-capacity");
-      hideElementAndItsChildren(".buttons");
-
-      showElementAndItsChildren("#" + GRAPH_CREATION);
-      showElementAndItsChildren("#clear");
-      showElementAndItsChildren("#mouse-label");
-      showElementAndItsChildren("#mouse-update");
-      hideElementAndItsChildren("#fileInput");
-      hideElementAndItsChildren(".ending-actions");
-
-      if (showOriginalCapacitiesAndCurrentFlow) {
-        removeOriginalCapacitiesAndCurrentFlow();
-      }
-
-      $("#instructions-state").html("<b>Graph Creation:</b>");
-      $("#instructions").html(GRAPH_CREATION_INSTRUCTIONS);
-
-      // restore original graph
-      cy.edges().remove();
-      for (const edge of originalFlowNetwork) {
-        addEdge(
-          cy,
-          edge.source + "-" + edge.target,
-          { label: edge.capacity },
-          edge.source,
-          edge.target
-        );
-      }
-      // restore source and sink from snapshot
-      if (originalSource !== null) {
-        source = originalSource;
-        sink = originalSink;
-        $("#source").text("Source=" + source);
-        $("#sink").text("Sink=" + sink);
-        highlightSourceAndSink();
-      }
+      if (typeof clearAnalysisResults === "function") clearAnalysisResults();
+      exitManualPracticeMode(true);
     }
   });
 
   // allow edge label to show and disappear
-  var selectedEdge = null;
+  selectedEdge = null;
   cy.on("tap", function (event) {
     var target = event.cyTarget;
     if (target.group != "edges") {
@@ -437,7 +493,7 @@ $(function () {
     }
   });
 
-  var selectedNodes = new Set();
+  selectedNodes = selectedNodes || new Set();
   cy.on("tap", "node", function (event) {
     var node = event.cyTarget;
     if (!node) return;
@@ -455,7 +511,7 @@ $(function () {
     }
   });
 
-  var selectedPath = [];
+  selectedPath = selectedPath || [];
   selectedNodes.clear();
   // tap edge to change capacity in modifying mode or select path in practicing mode
   cy.on("tap", "edge", function (event) {
@@ -488,9 +544,9 @@ $(function () {
     }
   });
 
-  var oldFlowNetwork = null;
-  var totalflow = 0;
-  var flow = 0;
+  oldFlowNetwork = null;
+  totalflow = 0;
+  flow = 0;
   // proceed in steps in pracitcing mode
   $(".proceed-step").on("click", function (event) {
     event.preventDefault();

@@ -67,3 +67,54 @@ body {
   width: 100%;
   margin-top: 8px;
 }
+
+/* Evacuation Scenario Toolbar & Results Dashboard */
+.scenario-toolbar {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e7eaec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scenario-toolbar label {
+  margin: 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.evac-metric-card {
+  background: #ffffff;
+  border: 1px solid #e7eaec;
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.evac-metric-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #888;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.evac-metric-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #1ab394;
+  margin-top: 2px;
+}
+
+#res-cut-edges-list {
+  padding-left: 15px;
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+#res-cut-edges-list li {
+  margin-bottom: 4px;
+}
