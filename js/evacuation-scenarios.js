@@ -328,8 +328,10 @@ function runAutomatedAnalysis() {
   const absoluteChange = calculatedMaxFlow - baseline;
   const throughputReduction = baseline - calculatedMaxFlow;
   let reductionPercentage = 0;
+  let percentageChange = 0;
   if (baseline > 0) {
     reductionPercentage = (throughputReduction / baseline) * 100;
+    percentageChange = (absoluteChange / baseline) * 100;
   }
 
   // Store result
@@ -341,6 +343,7 @@ function runAutomatedAnalysis() {
     absoluteChange: absoluteChange,
     throughputReduction: throughputReduction,
     reductionPercentage: reductionPercentage,
+    percentageChange: percentageChange,
     minCutEdges: minCutEdges,
     cutCapacity: calculatedCutCapacity,
     augmentingPaths: augmentingPaths,
@@ -400,18 +403,21 @@ function renderAnalysisDashboard(res) {
   // Comparison metrics badge
   if (res.throughputReduction > 0) {
     $("#res-reduction-badge")
-      .html(`<span class="label label-danger" style="font-size:13px;"><i class="fa fa-arrow-down"></i> -${res.throughputReduction} people/min (-${res.reductionPercentage.toFixed(1)}%)</span>`);
+      .html(`<span class="label label-danger" style="font-size:13px;"><i class="fa fa-arrow-down"></i> Capacity Reduction: ${res.throughputReduction} people/min (${res.reductionPercentage.toFixed(1)}%)</span>`);
   } else if (res.throughputReduction === 0) {
     $("#res-reduction-badge")
       .html(`<span class="label label-success" style="font-size:13px;"><i class="fa fa-check"></i> Baseline Capacity (100%)</span>`);
   } else {
     $("#res-reduction-badge")
-      .html(`<span class="label label-info" style="font-size:13px;"><i class="fa fa-arrow-up"></i> +${Math.abs(res.throughputReduction)} people/min (+${Math.abs(res.reductionPercentage).toFixed(1)}%)</span>`);
+      .html(`<span class="label label-info" style="font-size:13px;"><i class="fa fa-arrow-up"></i> Capacity Increase: ${Math.abs(res.throughputReduction)} people/min (+${Math.abs(res.reductionPercentage).toFixed(1)}%)</span>`);
   }
 
-  // Absolute difference & Throughput reduction details
+  // Absolute difference & Throughput reduction details (Signed Change vs Percentage Reduction)
+  const signedPctStr = res.baselineFlow > 0
+    ? `${res.percentageChange > 0 ? "+" : ""}${res.percentageChange.toFixed(1)}%`
+    : "0.0%";
   $("#res-diff-detail").html(
-    `Absolute Difference: <b>${res.absoluteChange > 0 ? "+" : ""}${res.absoluteChange}</b> people/min &nbsp;|&nbsp; Capacity Reduction: <b>${res.throughputReduction}</b> people/min`
+    `Absolute Change: <b>${res.absoluteChange > 0 ? "+" : ""}${res.absoluteChange}</b> people/min (${signedPctStr}) &nbsp;|&nbsp; Percentage Reduction: <b>${res.reductionPercentage.toFixed(1)}%</b>`
   );
 
   // Minimum Cut Details
@@ -426,7 +432,7 @@ function renderAnalysisDashboard(res) {
   } else {
     $("#res-mincut-summary").html(
       `<div style="font-size:13px;margin-bottom:6px;">
-        Total Min-Cut Bottleneck Capacity: <b>${res.cutCapacity} people/min</b> 
+        Total Min-Cut Bottleneck Capacity: <b>${res.cutCapacity} people/min</b>
         ${res.theoremVerified ? '<span class="text-success"><i class="fa fa-check-circle"></i> (Verified: Max Flow = Min Cut)</span>' : ''}
       </div>`
     );
@@ -442,7 +448,7 @@ function renderAnalysisDashboard(res) {
 
       edgesHtml += `<li style="padding: 2px 0;">
         <span class="label label-default" style="background:#ad1a66;color:white;">${e.source} → ${e.target}</span>
-        <b>${srcName} → ${tgtName}</b>: 
+        <b>${srcName} → ${tgtName}</b>:
         <span class="text-danger font-bold">${e.capacity} people/min</span>
       </li>`;
     });
