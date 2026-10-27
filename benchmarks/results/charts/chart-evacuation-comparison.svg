@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<style>
+  text { font-family: 'Segoe UI', Arial, sans-serif; }
+  .title { font-size: 16px; font-weight: bold; fill: #2c3e50; }
+  .axis-label { font-size: 12px; fill: #555; }
+  .tick-label { font-size: 10px; fill: #666; }
+  .legend-text { font-size: 11px; fill: #333; }
+  .grid-line { stroke: #eee; stroke-width: 1; }
+  .axis-line { stroke: #ccc; stroke-width: 1; }
+</style>
+<rect width="800" height="500" fill="white"/>
+<text x="400" y="25" text-anchor="middle" class="title">Runtime Comparison — Campus Evacuation Scenario</text>
+<line x1="80" y1="420" x2="620" y2="420" class="grid-line"/><text x="72" y="424" text-anchor="end" class="tick-label">0</text>
+<line x1="80" y1="346" x2="620" y2="346" class="grid-line"/><text x="72" y="350" text-anchor="end" class="tick-label">0.03</text>
+<line x1="80" y1="272" x2="620" y2="272" class="grid-line"/><text x="72" y="276" text-anchor="end" class="tick-label">0.06</text>
+<line x1="80" y1="198" x2="620" y2="198" class="grid-line"/><text x="72" y="202" text-anchor="end" class="tick-label">0.10</text>
+<line x1="80" y1="124" x2="620" y2="124" class="grid-line"/><text x="72" y="128" text-anchor="end" class="tick-label">0.13</text>
+<line x1="80" y1="50" x2="620" y2="50" class="grid-line"/><text x="72" y="54" text-anchor="end" class="tick-label">0.16</text>
+<line x1="80" y1="50" x2="80" y2="420" class="axis-line"/><line x1="80" y1="420" x2="620" y2="420" class="axis-line"/><text x="25" y="235" text-anchor="middle" transform="rotate(-90, 25, 235)" class="axis-label">Runtime (ms, median)</text>
+<rect x="110" y="292.04080363251853" width="38" height="127.9591963674815" fill="#3498db" stroke="#2980b9" stroke-width="1" rx="2"/><rect x="150" y="294.34222802761707" width="38" height="125.65777197238293" fill="#e74c3c" stroke="#c0392b" stroke-width="1" rx="2"/><rect x="190" y="98.26086956521732" width="38" height="321.7391304347827" fill="#2ecc71" stroke="#27ae60" stroke-width="1" rx="2"/><text x="170" y="438" text-anchor="middle" class="tick-label">Evacuation-Normal</text>
+<rect x="290" y="202.74553710269328" width="38" height="217.25446289730672" fill="#3498db" stroke="#2980b9" stroke-width="1" rx="2"/><rect x="330" y="169.37488337376374" width="38" height="250.62511662623626" fill="#e74c3c" stroke="#c0392b" stroke-width="1" rx="2"/><rect x="370" y="234.9654786340735" width="38" height="185.0345213659265" fill="#2ecc71" stroke="#27ae60" stroke-width="1" rx="2"/><text x="350" y="438" text-anchor="middle" class="tick-label">Evacuation-Blocked</text>
+<rect x="470" y="246.01231573054673" width="38" height="173.98768426945327" fill="#3498db" stroke="#2980b9" stroke-width="1" rx="2"/><rect x="510" y="318.50718417615224" width="38" height="101.49281582384775" fill="#e74c3c" stroke="#c0392b" stroke-width="1" rx="2"/><rect x="550" y="301.24650121291285" width="38" height="118.75349878708715" fill="#2ecc71" stroke="#27ae60" stroke-width="1" rx="2"/><text x="530" y="438" text-anchor="middle" class="tick-label">Evacuation-Restricted</text>
+<rect x="635" y="60" width="14" height="14" fill="#3498db" stroke="#2980b9" stroke-width="1" rx="2"/><text x="655" y="71" class="legend-text">Edmonds-Karp</text>
+<rect x="635" y="82" width="14" height="14" fill="#e74c3c" stroke="#c0392b" stroke-width="1" rx="2"/><text x="655" y="93" class="legend-text">Ford-Fulkerson</text>
+<rect x="635" y="104" width="14" height="14" fill="#2ecc71" stroke="#27ae60" stroke-width="1" rx="2"/><text x="655" y="115" class="legend-text">Widest-Path</text>
+</svg>

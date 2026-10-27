@@ -120,7 +120,8 @@ A maximum-flow algorithm repeatedly executes augmenting path searches until no p
     augmentations.
 - **Total Time Complexity:**
   $$\mathcal{O}(|E| \log |V|) \times \mathcal{O}(|E| \log |F|) = \mathcal{O}(|E|^2 \log |V| \log |F|)$$
-  - *Weakly polynomial:* Scales logarithmically with the flow capacity $|F|$ or maximum edge capacity $C$, providing rapid convergence when capacities are very large and BFS requires numerous small-unit augmentations.
+  - *Capacity-dependent / Weakly polynomial:* Scales logarithmically with the numerical flow capacity $|F|$ (or maximum edge capacity $C$). Unlike Edmonds–Karp ($\mathcal{O}(|V| \cdot |E|^2)$), which is strictly strongly polynomial, the widest-path bound depends on the magnitude of the capacity data.
+  - *Important Research Distinction:* In benchmark experiments on a single fixed graph, one may observe invariant augmentation counts as capacities scale. This empirical invariance is an artifact of the specific graph's topology and bottleneck structure; it does **not** prove that the widest-path algorithm is strongly polynomial. In general pathological networks with irrational or varied capacities, widest-path can require $\Omega(|E| \log |F|)$ augmentations.
 
 ---
 

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<style>
+  text { font-family: 'Segoe UI', Arial, sans-serif; }
+  .title { font-size: 16px; font-weight: bold; fill: #2c3e50; }
+  .axis-label { font-size: 12px; fill: #555; }
+  .tick-label { font-size: 10px; fill: #666; }
+  .legend-text { font-size: 11px; fill: #333; }
+  .grid-line { stroke: #eee; stroke-width: 1; }
+  .axis-line { stroke: #ccc; stroke-width: 1; }
+</style>
+<rect width="800" height="500" fill="white"/>
+<text x="400" y="25" text-anchor="middle" class="title">Augmentations vs Vertices (Sparse)</text>
+<line x1="80" y1="440" x2="620" y2="440" class="grid-line"/><text x="72" y="444" text-anchor="end" class="tick-label">0</text>
+<line x1="80" y1="362" x2="620" y2="362" class="grid-line"/><text x="72" y="366" text-anchor="end" class="tick-label">6.21</text>
+<line x1="80" y1="284" x2="620" y2="284" class="grid-line"/><text x="72" y="288" text-anchor="end" class="tick-label">12.42</text>
+<line x1="80" y1="206" x2="620" y2="206" class="grid-line"/><text x="72" y="210" text-anchor="end" class="tick-label">18.63</text>
+<line x1="80" y1="128" x2="620" y2="128" class="grid-line"/><text x="72" y="132" text-anchor="end" class="tick-label">24.84</text>
+<line x1="80" y1="50" x2="620" y2="50" class="grid-line"/><text x="72" y="54" text-anchor="end" class="tick-label">31.05</text>
+<line x1="80" y1="50" x2="80" y2="440" class="axis-line"/><line x1="80" y1="440" x2="620" y2="440" class="axis-line"/><text x="350" y="490" text-anchor="middle" class="axis-label">Vertices</text>
+<text x="25" y="245" text-anchor="middle" transform="rotate(-90, 25, 245)" class="axis-label">Augmentations (median)</text>
+<text x="80" y="458" text-anchor="middle" class="tick-label">10</text>
+<text x="170" y="458" text-anchor="middle" class="tick-label">25</text>
+<text x="320" y="458" text-anchor="middle" class="tick-label">50</text>
+<text x="620" y="458" text-anchor="middle" class="tick-label">100</text>
+<path d="M80.0,414.9 L170.0,389.8 L320.0,402.3 L620.0,352.1" fill="none" stroke="#2980b9" stroke-width="2" stroke-linejoin="round"/><circle cx="80" cy="414.8792270531401" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><circle cx="170" cy="389.75845410628017" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><circle cx="320" cy="402.3188405797101" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><circle cx="620" cy="352.0772946859903" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><path d="M80.0,414.9 L170.0,289.3 L320.0,239.0 L620.0,100.9" fill="none" stroke="#c0392b" stroke-width="2" stroke-linejoin="round"/><rect x="76" y="410.8792270531401" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><rect x="166" y="285.27536231884056" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><rect x="316" y="235.03381642512073" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><rect x="616" y="96.86956521739125" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><path d="M80.0,427.4 L170.0,414.9 L320.0,414.9 L620.0,402.3" fill="none" stroke="#27ae60" stroke-width="2" stroke-linejoin="round"/><polygon points="80,422.63961352657003 76,430.63961352657003 84,430.63961352657003" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><polygon points="170,410.0792270531401 166,418.0792270531401 174,418.0792270531401" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><polygon points="320,410.0792270531401 316,418.0792270531401 324,418.0792270531401" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><polygon points="620,397.5188405797101 616,405.5188405797101 624,405.5188405797101" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><rect x="635" y="60" width="14" height="14" fill="#3498db" stroke="#2980b9" stroke-width="1" rx="2"/><text x="655" y="71" class="legend-text">Edmonds-Karp</text>
+<rect x="635" y="82" width="14" height="14" fill="#e74c3c" stroke="#c0392b" stroke-width="1" rx="2"/><text x="655" y="93" class="legend-text">Ford-Fulkerson</text>
+<rect x="635" y="104" width="14" height="14" fill="#2ecc71" stroke="#27ae60" stroke-width="1" rx="2"/><text x="655" y="115" class="legend-text">Widest-Path</text>
+</svg>

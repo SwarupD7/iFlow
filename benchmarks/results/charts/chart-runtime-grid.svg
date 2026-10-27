@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<style>
+  text { font-family: 'Segoe UI', Arial, sans-serif; }
+  .title { font-size: 16px; font-weight: bold; fill: #2c3e50; }
+  .axis-label { font-size: 12px; fill: #555; }
+  .tick-label { font-size: 10px; fill: #666; }
+  .legend-text { font-size: 11px; fill: #333; }
+  .grid-line { stroke: #eee; stroke-width: 1; }
+  .axis-line { stroke: #ccc; stroke-width: 1; }
+</style>
+<rect width="800" height="500" fill="white"/>
+<text x="400" y="25" text-anchor="middle" class="title">Runtime vs Vertices (Grid Graphs)</text>
+<line x1="80" y1="440" x2="620" y2="440" class="grid-line"/><text x="72" y="444" text-anchor="end" class="tick-label">7.6e-3</text>
+<line x1="80" y1="362" x2="620" y2="362" class="grid-line"/><text x="72" y="366" text-anchor="end" class="tick-label">0.01</text>
+<line x1="80" y1="284" x2="620" y2="284" class="grid-line"/><text x="72" y="288" text-anchor="end" class="tick-label">0.03</text>
+<line x1="80" y1="206" x2="620" y2="206" class="grid-line"/><text x="72" y="210" text-anchor="end" class="tick-label">0.05</text>
+<line x1="80" y1="128" x2="620" y2="128" class="grid-line"/><text x="72" y="132" text-anchor="end" class="tick-label">0.10</text>
+<line x1="80" y1="50" x2="620" y2="50" class="grid-line"/><text x="72" y="54" text-anchor="end" class="tick-label">0.19</text>
+<line x1="80" y1="50" x2="80" y2="440" class="axis-line"/><line x1="80" y1="440" x2="620" y2="440" class="axis-line"/><text x="350" y="490" text-anchor="middle" class="axis-label">Vertices</text>
+<text x="25" y="245" text-anchor="middle" transform="rotate(-90, 25, 245)" class="axis-label">Runtime (ms, median)</text>
+<text x="80" y="458" text-anchor="middle" class="tick-label">9</text>
+<text x="174.5" y="458" text-anchor="middle" class="tick-label">16</text>
+<text x="296" y="458" text-anchor="middle" class="tick-label">25</text>
+<text x="620" y="458" text-anchor="middle" class="tick-label">49</text>
+<path d="M80.0,440.0 L174.5,362.1 L296.0,227.5 L620.0,66.8" fill="none" stroke="#c0392b" stroke-width="2" stroke-linejoin="round"/><rect x="76" y="436" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><rect x="170.5" y="358.1200808386263" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><rect x="292" y="223.47759569380167" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><rect x="616" y="62.84929101909756" width="8" height="8" fill="#e74c3c" stroke="#c0392b" stroke-width="1"/><path d="M80.0,422.3 L174.5,338.8 L296.0,289.9 L620.0,159.4" fill="none" stroke="#27ae60" stroke-width="2" stroke-linejoin="round"/><polygon points="80,417.52591391411056 76,425.52591391411056 84,425.52591391411056" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><polygon points="174.5,333.9621170331842 170.5,341.9621170331842 178.5,341.9621170331842" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><polygon points="296,285.08042943996276 292,293.08042943996276 300,293.08042943996276" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><polygon points="620,154.63020626894735 616,162.63020626894735 624,162.63020626894735" fill="#2ecc71" stroke="#27ae60" stroke-width="1"/><path d="M80.0,426.5 L174.5,319.8 L296.0,270.9 L620.0,79.1" fill="none" stroke="#2980b9" stroke-width="2" stroke-linejoin="round"/><circle cx="80" cy="426.5075033422897" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><circle cx="174.5" cy="319.7873768814792" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><circle cx="296" cy="270.9056892882578" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><circle cx="620" cy="79.08145526116994" r="4" fill="#3498db" stroke="#2980b9" stroke-width="1"/><rect x="635" y="60" width="14" height="14" fill="#e74c3c" stroke="#c0392b" stroke-width="1" rx="2"/><text x="655" y="71" class="legend-text">Ford-Fulkerson</text>
+<rect x="635" y="82" width="14" height="14" fill="#2ecc71" stroke="#27ae60" stroke-width="1" rx="2"/><text x="655" y="93" class="legend-text">Widest-Path</text>
+<rect x="635" y="104" width="14" height="14" fill="#3498db" stroke="#2980b9" stroke-width="1" rx="2"/><text x="655" y="115" class="legend-text">Edmonds-Karp</text>
+</svg>

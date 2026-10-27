@@ -33,6 +33,11 @@ const testSuites = [
     name: 'Flow Solvers Module Tests (Phase 6 Metrics & Traces)',
     file: path.join(__dirname, 'test-flow-solvers.js'),
     desc: 'Edmonds-Karp, Ford-Fulkerson, Widest-Path solvers — 9-invariant verifier, brute-force cut oracle, metrics & execution trace verification'
+  },
+  {
+    name: 'Benchmark & Generator Tests (Phase 7)',
+    file: path.join(__dirname, 'test-benchmarks.js'),
+    desc: 'Seeded PRNG, deterministic graph generators, statistical metrics, RFC 4180 CSV I/O, generated graph solver correctness'
   }
 ];
 
