@@ -3,7 +3,7 @@
 **Project Title:** Graph-Based Emergency Evacuation Capacity Optimization Using Maximum Flow and Minimum Cut Algorithms
 **Application Name:** Campus Evacuation Capacity Analyzer
 **Course:** Design and Analysis of Algorithms (DAA)
-**Implementation Source:** `js/model/max-flow.js`, `js/model/priority-queue.js`, `js/evacuation-scenarios.js`
+**Implementation Source:** `js/model/flow-solvers.js`, `js/model/max-flow.js`, `js/model/priority-queue.js`, `js/evacuation-scenarios.js`
 
 ---
 
@@ -70,20 +70,23 @@ Before analyzing complete maximum-flow algorithms, we analyze the time complexit
 A maximum-flow algorithm repeatedly executes augmenting path searches until no path with positive residual capacity exists from $s$ to $t$.
 
 ### 3.1 Ford-Fulkerson Method (Arbitrary Augmenting Paths)
-- **Algorithm Type:** Augmenting path method using arbitrary paths (e.g., via DFS).
+- **Algorithm Type:** Augmenting path method using arbitrary paths (implemented via iterative deterministic DFS in `solveFordFulkerson`).
 - **Termination & Bounds (Standard Integer Capacity Analysis):**
   If capacities are integers, each augmentation increases total flow by at least $1$ integer unit ($\delta \ge 1$).
-  Therefore, the algorithm terminates in at most $|F|$ augmentations, where $|F|$ is the value of the maximum flow.
+  Therefore, the algorithm terminates in at most $|F|$ augmentations, where $|F|$ is the numerical value of the maximum flow.
 - **Total Worst-Case Time Complexity:**
   $$\mathcal{O}(|E| \times |F|)$$
-- **Crucial Qualification:**
-  - This bound depends on the numerical value of maximum flow $|F|$, making it pseudo-polynomial.
-  - If capacities are irrational numbers, arbitrary Ford-Fulkerson is not guaranteed to terminate or may converge to an incorrect value.
-  - On pathological networks (e.g., a 4-node diamond with bottleneck edge capacity 1 and outer edges capacity $M$), DFS path choice can alternate $2M$ times.
+- **Crucial Implementation Assumptions & Qualifications:**
+  - **Pseudo-polynomial nature:** The $\mathcal{O}(|E| \times |F|)$ bound depends on the numerical value of the maximum flow $|F|$, rather than purely the input size ($|V|, |E|$).
+  - **Capacity domain assumptions:**
+    - *Integer capacities:* Guaranteed finite termination in at most $|F|$ iterations.
+    - *Rational capacities:* If capacities are expressed as fractions $p/q$, multiplying by the least common multiple of denominators $D$ reduces the problem to integers, yielding $\mathcal{O}(|E| \times D \times |F|)$.
+    - *Irrational / real-valued capacities:* Pathological networks can lead to infinite non-converging loops. In our hardened implementation, practical termination is strictly guaranteed by an explicit `maxIterations = 10000` guard and a floating-point tolerance threshold $\epsilon = 10^{-9}$.
+  - **Pathological DFS alternation:** On graphs with high capacity outer edges and a unit-capacity bridge, naive DFS may alternate across the bridge, taking $2|F|$ iterations.
 
 ### 3.2 Edmonds-Karp Algorithm (BFS Augmenting Paths)
 - **Algorithm Type:** Breadth-First Search augmenting paths (shortest path in terms of edge count).
-- **Used by:** Automated Evacuation Solver (`runAutomatedAnalysis()` in `js/evacuation-scenarios.js`).
+- **Used by:** Automated Evacuation Solver (`runAutomatedAnalysis()` in `js/evacuation-scenarios.js`) and `solveEdmondsKarp()` in `js/model/flow-solvers.js`.
 - **Theoretical Guarantee:** Independent of edge capacities $|F|$. Strongly polynomial.
 - **Augmentation Bound Proof Sketch:**
   1. For all vertices $v \in V$, the shortest-path distance $d_{G_f}(s, v)$ in the residual network increases monotonically with each augmentation ($d_{new}(s, v) \ge d_{old}(s, v)$).
@@ -102,16 +105,22 @@ A maximum-flow algorithm repeatedly executes augmenting path searches until no p
   In practice, the baseline evacuation network terminates in exactly **4 augmenting paths**, taking **$< 1$ millisecond** in JavaScript.
 
 ### 3.3 Widest-Path Heuristic (Fat-Path / Maximum-Capacity Augmentations)
-- **Algorithm Type:** Selects the path that maximizes the bottleneck capacity $\delta$ in each iteration.
+- **Algorithm Type:** Selects the path that maximizes the bottleneck capacity $\delta$ in each iteration (modified Dijkstra in `solveWidestPath`).
+- **Binary Heap Priority Queue Search Cost:**
+  - Our heap implementation (`_makeMaxHeap`) does not maintain back-pointers for $\mathcal{O}(\log |V|)$ `decrease-key`. Instead, when a wider bottleneck to a node $v$ is discovered, the updated `(width, node)` pair is inserted into the binary heap.
+  - In the worst case, each residual edge relaxation pushes an element into the heap, resulting in at most $\mathcal{O}(|E|)$ elements pushed and popped.
+  - Stale heap entries are lazily discarded in $\mathcal{O}(1)$ via `if (width < maxWidth.get(u)) continue`.
+  - Thus, a single search takes $\mathcal{O}(|E| \log |V|)$ time and $\mathcal{O}(|E|)$ auxiliary heap space.
 - **Number of Augmentations Bound:**
-  By the Max-Flow Min-Cut theorem, at least $\frac{1}{|E|}$ fraction of the remaining flow can be captured by the widest path.
-  For integer capacities bounded by $C = \max_{(u, v)} c(u, v)$, the flow converges within:
-  $$\mathcal{O}(|E| \ln(|E| \times C)) \quad \text{or} \quad \mathcal{O}(|E| \log |F|)$$
-  augmentations.
+  - By the Max-Flow Min-Cut theorem, the maximum bottleneck path carries at least $\frac{1}{|E|}$ fraction of the remaining unrouted flow:
+    $$\delta \ge \frac{|F| - |f|}{|E|}$$
+  - After $k$ augmentations, the remaining flow is bounded by $|F|(1 - 1/|E|)^k \le |F| e^{-k / |E|}$.
+  - For integer capacities bounded by $C = \max_{(u, v)} c(u, v)$ or maximum flow $|F|$, the residual flow drops below $1$ unit after:
+    $$\mathcal{O}(|E| \ln |F|) \quad \text{or} \quad \mathcal{O}(|E| \ln(|E| \times C))$$
+    augmentations.
 - **Total Time Complexity:**
-  With our binary heap priority queue ($\mathcal{O}(|E| \log |V|)$ per path search):
-  $$\mathcal{O}(|E|^2 \log |V| \log |F|)$$
-  This provides faster convergence on networks with very large capacities where BFS might take more augmentations.
+  $$\mathcal{O}(|E| \log |V|) \times \mathcal{O}(|E| \log |F|) = \mathcal{O}(|E|^2 \log |V| \log |F|)$$
+  - *Weakly polynomial:* Scales logarithmically with the flow capacity $|F|$ or maximum edge capacity $C$, providing rapid convergence when capacities are very large and BFS requires numerous small-unit augmentations.
 
 ---
 
@@ -165,3 +174,44 @@ Because the evacuation graph is sparse ($|E| \ll |V|^2$), the adjacency-list rep
 | Full Max-Flow (Widest Path) | Fat-path augmentations | $\mathcal{O}(\|E\|^2 \log \|V\| \log \|F\|)$ | $\mathcal{O}(\|V\| + \|E\|)$ | $< 1\text{ ms}$ |
 | Minimum-Cut Extraction | Residual DFS reachability from $s$ | $\mathcal{O}(\|V\| + \|E\|)$ | $\mathcal{O}(\|V\|)$ | $< 0.1\text{ ms}$ |
 | Bottleneck Edge Filtering | $u \in S, v \notin S$ partition check | $\mathcal{O}(\|E\|)$ | $\mathcal{O}(\|E\|)$ | $< 0.05\text{ ms}$ |
+
+---
+
+## 7. Standalone Solvers & Predecessor Tracking (Phase 5: `flow-solvers.js`)
+
+In Phase 5, the three standalone solvers (`solveEdmondsKarp`, `solveFordFulkerson`, `solveWidestPath`) were implemented in `js/model/flow-solvers.js` with pure-algorithmic optimizations:
+
+### 7.1 Predecessor Maps vs. Path Cloning
+- **Previous Pattern:** Explorations previously duplicated paths on every branch via `structuredClone(path)`, incurring $\mathcal{O}(L \cdot |E|)$ memory overhead where $L$ is path length.
+- **Phase 5 Implementation:** Solvers maintain a single predecessor map (`Map<nodeId, { prevNode, slotKey }>`). Each explored edge records its predecessor in $\mathcal{O}(1)$ time. Once sink $t$ is reached, the path is reconstructed in $\mathcal{O}(L)$ time via `_traceAndBottleneck(pred, src, snk, residual)`.
+- **Space Overhead:** Strictly $\mathcal{O}(|V|)$ auxiliary space for predecessor mapping.
+
+### 7.2 Collision-Free Residual Graph Representation
+- **Composite Edge Keys:** To handle parallel edges and bidirectional original connections without key overwrites, `buildResidualNetwork()` keys residual slots by `fwd:<edgeId>` and `rev:<edgeId>`.
+- **Adjacency Structure:** `Map<nodeId, Map<slotKey, slot>>` allows direct $\mathcal{O}(1)$ neighbor iteration and reverse-edge flow cancellation (`slot.revNode`, `slot.revKey`).
+
+### 7.3 Iterative DFS in Ford-Fulkerson
+- **Mechanism:** `solveFordFulkerson()` uses an explicit stack rather than recursion, eliminating call stack limits for large graphs.
+- **Determinism:** Traverses neighbors in predictable Map-insertion order, guaranteeing reproducible traces.
+
+### 7.4 Standalone Max-Heap for Widest-Path
+- **Implementation:** `_makeMaxHeap` implements an array-based binary max-heap with 0-based bitwise indexing (`(i << 1) + 1` for left child, `((i + 1) >>> 1) - 1` for parent).
+- **Complexity:** Push and extract-max operations are guaranteed $\mathcal{O}(\log |V|)$ without external class dependencies.
+
+### 7.5 Automated Correctness Verification (`verifySolverResult`)
+- In Phase 5.1, `verifySolverResult(networkDef, result, options)` was hardened into an independent verification suite that checks **all 9 correctness invariants** using a documented floating-point tolerance $\epsilon = 10^{-9}$:
+  1. **Capacity Constraints (`CHECK_1_CAPACITY_CONSTRAINTS`):** Every original edge satisfies $0 \le f(e) \le c(e)$.
+  2. **Flow Conservation (`CHECK_2_FLOW_CONSERVATION`):** For every vertex $v \in V \setminus \{s, t\}$, incoming flow equals outgoing flow ($\sum f_{in}(v) = \sum f_{out}(v)$).
+  3. **Net Terminal Flows (`CHECK_3_NET_TERMINAL_FLOW`):** Net source outflow and net sink inflow both equal reported maximum flow $|F|$.
+  4. **Independent Residual Reachability (`CHECK_4_INDEPENDENT_RESIDUAL_REACHABILITY`):** The residual reachability set $S$ is recomputed independently from scratch using original edges and final flows (untrusted solver partition).
+  5. **Residual Sink Unreachability (`CHECK_5_SINK_UNREACHABLE`):** The sink is unreachable from source in residual network ($t \notin S$).
+  6. **Cut Partition Validity (`CHECK_6_CUT_PARTITION`):** $s \in S$ and $t \in T = V \setminus S$.
+  7. **Cut Edges & Capacity (`CHECK_7_CUT_EDGES_AND_CAPACITY`):** Cut edges are original edges crossing from $S$ to $T$, and their capacities sum exactly to $c(S, T)$.
+  8. **Max-Flow Min-Cut Theorem Equality (`CHECK_8_MAX_FLOW_MIN_CUT_EQUALITY`):** $|F| = c(S, T)$.
+  9. **Augmentation Trace Validity (`CHECK_9_AUGMENTING_PATHS_VALIDITY`):** Every path trace is connected, has bottleneck $\delta > 0$, and cumulative bottlenecks equal $|F|$.
+- Verification executes independently in $\mathcal{O}(|V| + |E|)$ time and $\mathcal{O}(|V| + |E|)$ auxiliary space.
+
+### 7.6 Exhaustive Min-Cut Oracle (`exhaustiveMinCutOracle`)
+- For small graphs ($|V| \le 16$), `exhaustiveMinCutOracle(networkDef)` iterates over all $2^{|V|-2}$ possible cuts $(S, T)$ with $s \in S, t \in T$, computing exact cut capacities directly from definition:
+  $$c(S, T) = \sum_{u \in S, v \in T} c(u, v)$$
+- Provides an independent benchmark oracle with time complexity $\mathcal{O}(2^{|V|-2} \cdot |E|)$, completely decoupled from any maximum-flow algorithm.

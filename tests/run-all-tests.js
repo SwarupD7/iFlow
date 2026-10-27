@@ -28,6 +28,11 @@ const testSuites = [
     name: 'Scenarios & UI State Integration Tests',
     file: path.join(__dirname, 'test-scenarios-and-ui.js'),
     desc: 'Scenario switching, baseline comparisons, % formatting, layout preservation, practice mode lifecycle'
+  },
+  {
+    name: 'Flow Solvers Module Tests (Phase 5.1 Hardened)',
+    file: path.join(__dirname, 'test-flow-solvers.js'),
+    desc: 'Edmonds-Karp, Ford-Fulkerson, Widest-Path solvers — 9-invariant verifier, brute-force cut oracle, multi-edges, invalid input handling'
   }
 ];
 

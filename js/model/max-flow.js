@@ -310,7 +310,7 @@ class FlowNetwork {
   }
 
   findMaxFlowFulkerson(paths) {
-    console.log(this.graph);
+    // Stub — full implementation provided by flow-solvers.js (Phase 5)
   }
 
   DFS(node, visited, searchGraph) {
@@ -320,7 +320,6 @@ class FlowNetwork {
     visited.add(node);
     let filteredNeighbors = this.filterNeighbors(searchGraph.get(node));
     for (const neighbor of filteredNeighbors) {
-      console.log(neighbor);
       if (!visited.has(neighbor)) {
         visited = this.DFS(neighbor, visited, searchGraph);
       }
@@ -365,10 +364,8 @@ class FlowNetwork {
 
   findMinCutBack(sink) {
     let visited = new Set();
-    // console.log(this.graph)
     let reversedGraph = this.reverseGraph(this.graph);
     visited = this.DFS(sink, visited, reversedGraph);
-    console.log(visited);
 
     let minCut = [];
     for (let node of visited) {
