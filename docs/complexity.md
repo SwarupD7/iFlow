@@ -215,3 +215,54 @@ In Phase 5, the three standalone solvers (`solveEdmondsKarp`, `solveFordFulkerso
 - For small graphs ($|V| \le 16$), `exhaustiveMinCutOracle(networkDef)` iterates over all $2^{|V|-2}$ possible cuts $(S, T)$ with $s \in S, t \in T$, computing exact cut capacities directly from definition:
   $$c(S, T) = \sum_{u \in S, v \in T} c(u, v)$$
 - Provides an independent benchmark oracle with time complexity $\mathcal{O}(2^{|V|-2} \cdot |E|)$, completely decoupled from any maximum-flow algorithm.
+
+---
+
+## 8. Standardized Metrics & Execution Tracing (Phase 6)
+
+Phase 6 standardizes performance instrumentation and execution tracing across Edmonds-Karp, Ford-Fulkerson, and Widest-Path solvers to ensure reproducible metrics and transparent algorithmic diagnostics.
+
+### 8.1 Metric Definitions & Counting Conventions
+
+| Metric | Definition & Counting Rule | Normal Termination Relation |
+|---|---|:---:|
+| **`augmentations`** | Count of successful residual-path augmentations that strictly increase total flow by $\delta > 0$. | Exactly $k$ augmentations |
+| **`searchAttempts`** | Count of all path-search attempts initiated by the solver, **including the final unsuccessful search** that proves optimality. | Exactly $k + 1$ attempts ($1$ for disconnected graphs) |
+| **`edgeExaminations`** | Count of residual slots iterated in the inner loop of the search routine. Each visited residual slot counts as $1$ examination, including saturated edges ($c_f \le \epsilon$) and already-visited target nodes. | $\ge \text{searchAttempts}$ |
+| **`initMs`** | Elapsed time in milliseconds spent validating inputs and building the collision-free residual network (`buildResidualNetwork()`). | Sub-millisecond ($< 0.1\text{ ms}$) |
+| **`coreMs`** | Elapsed time in milliseconds spent in the path-search and flow-augmentation loop. | Measured via `performance.now()` |
+| **`totalMs`** | End-to-end execution time including residual network initialization, augmentation loop, min-cut extraction, and invariant verification (`_finalise()`). | $\ge \text{initMs} + \text{coreMs}$ |
+| **`elapsedMs`** | Backward-compatibility alias for `totalMs`. | Identical to `totalMs` |
+
+### 8.2 High-Resolution Timing Engine
+- High-resolution timing is implemented via `_now()`, prioritizing `globalThis.performance.now()` in browser and Node.js environments.
+- Node.js fallback checks `require('perf_hooks').performance.now()`, and finally degrades to `Date.now()`.
+- Avoids wall-clock time coarse-graining ($15\text{ ms}$ Windows tick resolution) by providing microsecond-precision profiling.
+
+### 8.3 Step-Level Augmenting Path Tracing (`steps`)
+Every record in `result.augmentingPaths` contains a detailed `steps` array describing each traversed edge in the augmenting path:
+```javascript
+{
+  iteration: 1,
+  path: "S->A->B->T",
+  edgeIds: ["e1", "e3", "e5"],
+  bottleneck: 1,
+  totalFlow: 1,
+  steps: [
+    {
+      edgeId: "e1",
+      fromNode: "S",
+      toNode: "A",
+      isReverse: false,
+      direction: "FORWARD_AUGMENTATION",
+      residualCapBefore: 10,
+      residualCapAfter: 9,
+      bottleneck: 1
+    },
+    ...
+  ]
+}
+```
+- **Forward Augmentation vs. Reverse Cancellation:** Traversal along a forward edge has `isReverse: false` and `direction: 'FORWARD_AUGMENTATION'`. Traversal along a residual reverse edge has `isReverse: true` and `direction: 'REVERSE_CANCELLATION'`, making flow rerouting visually and programmatically transparent.
+- **Residual Transitions:** For every step, $c_f^{\text{after}} = c_f^{\text{before}} - \delta$. At least one critical edge in each path transitions to $c_f^{\text{after}} = 0$ (saturation).
+- **Automated Trace Verification:** `verifySolverResult` Check 9 independently checks path connectivity ($s \to \dots \to t$), step-to-step contiguity, bottleneck positivity, and residual capacity reduction.

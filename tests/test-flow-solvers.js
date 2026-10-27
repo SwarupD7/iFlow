@@ -1,5 +1,5 @@
 // ============================================================================
-// DAA COURSE PROJECT — FLOW SOLVERS TEST SUITE (Phase 5.1 Hardened)
+// DAA COURSE PROJECT — FLOW SOLVERS TEST SUITE (Phase 6 Metrics & Traces)
 // Application: Campus Evacuation Capacity Analyzer
 // Location: tests/test-flow-solvers.js
 //
@@ -8,7 +8,7 @@
 //   2. solveFordFulkerson — deterministic iterative DFS
 //   3. solveWidestPath    — Priority Queue (Fat-path / modified Dijkstra)
 //
-// 21 comprehensive test cases:
+// 28 comprehensive test cases:
 //   TC-01  Single edge graph
 //   TC-02  Two independent parallel paths
 //   TC-03  Shared bottleneck (diamond)
@@ -30,6 +30,13 @@
 //   TC-19  Malformed inputs rejection (missing terminals, endpoints, neg/NaN cap, dup IDs)
 //   TC-20  Floating-point / non-integer capacities (tolerance handling)
 //   TC-21  Verifier failure detection (tampered solutions caught by individual checks)
+//   TC-22  Phase 6: Standardized metrics completeness & non-negativity across all solvers
+//   TC-23  Phase 6: Search attempts counting (k+1 optimality proof, disconnected, error)
+//   TC-24  Phase 6: Edge examinations counting convention consistency
+//   TC-25  Phase 6: Step-level execution trace connectivity and residual transitions
+//   TC-26  Phase 6: Reverse-edge rerouting / flow cancellation explicit step trace
+//   TC-27  Phase 6: Max iterations safety cap and INCOMPLETE status handling
+//   TC-28  Phase 6: Verifier failure detection on tampered step traces
 // ============================================================================
 
 const fs   = require('fs');
@@ -243,7 +250,7 @@ const NET_EVAC_RESTRICTED = {
 // ---------------------------------------------------------------------------
 
 console.log('================================================================');
-console.log('  FLOW SOLVERS (Phase 5.1 Hardened) — COMPREHENSIVE TEST SUITE  ');
+console.log('  FLOW SOLVERS (Phase 6 Metrics & Traces) — COMPREHENSIVE TEST SUITE  ');
 console.log('================================================================');
 
 // TC-01 ─ Single edge
@@ -533,6 +540,203 @@ runTest('TC-21 Verifier failure detection on tampered / invalid solutions', () =
   const v5 = verifySolverResult(NET_CLRS, incompleteResult);
   assert.strictEqual(v5.isCorrect, false, 'Verifier must fail when sink is still reachable in residual graph');
   assert.strictEqual(v5.checks.CHECK_5_SINK_UNREACHABLE.passed, false, 'Check 5 must be flagged');
+});
+
+// TC-22 ─ Phase 6: Standardized metrics completeness & non-negativity across all solvers
+runTest('TC-22 Standardized metrics completeness & non-negativity across all solvers', () => {
+  const solvers = [
+    { name: 'EK', fn: solveEdmondsKarp },
+    { name: 'FF', fn: solveFordFulkerson },
+    { name: 'WP', fn: solveWidestPath }
+  ];
+
+  for (const s of solvers) {
+    const res = s.fn(NET_CLRS);
+    const m = res.metrics;
+    assert.ok(m, `${s.name}: metrics object must be present`);
+    assert.strictEqual(typeof m.augmentations, 'number', `${s.name}: augmentations must be a number`);
+    assert.ok(m.augmentations > 0, `${s.name}: augmentations must be positive`);
+    assert.strictEqual(m.augmentations, res.augmentingPaths.length, `${s.name}: augmentations must match augmentingPaths length`);
+    assert.strictEqual(typeof m.searchAttempts, 'number', `${s.name}: searchAttempts must be a number`);
+    assert.ok(m.searchAttempts >= m.augmentations, `${s.name}: searchAttempts >= augmentations`);
+    assert.strictEqual(typeof m.edgeExaminations, 'number', `${s.name}: edgeExaminations must be a number`);
+    assert.ok(m.edgeExaminations > 0, `${s.name}: edgeExaminations must be positive`);
+    assert.strictEqual(typeof m.elapsedMs, 'number', `${s.name}: elapsedMs must be a number`);
+    assert.ok(m.elapsedMs >= 0, `${s.name}: elapsedMs >= 0`);
+    assert.strictEqual(typeof m.initMs, 'number', `${s.name}: initMs must be a number`);
+    assert.ok(m.initMs >= 0, `${s.name}: initMs >= 0`);
+    assert.strictEqual(typeof m.coreMs, 'number', `${s.name}: coreMs must be a number`);
+    assert.ok(m.coreMs >= 0, `${s.name}: coreMs >= 0`);
+    assert.strictEqual(typeof m.totalMs, 'number', `${s.name}: totalMs must be a number`);
+    assert.ok(m.totalMs >= 0, `${s.name}: totalMs >= 0`);
+    assert.strictEqual(m.isTerminated, true, `${s.name}: isTerminated must be true`);
+    assert.strictEqual(m.terminationReason, 'NO_AUGMENTING_PATH', `${s.name}: terminationReason must be NO_AUGMENTING_PATH`);
+    assert.strictEqual(m.elapsedMs, m.totalMs, `${s.name}: elapsedMs alias must equal totalMs`);
+    assert.strictEqual(res.durationMs, m.totalMs, `${s.name}: durationMs must equal totalMs`);
+  }
+});
+
+// TC-23 ─ Phase 6: Search attempts counting (k+1 optimality proof, disconnected, error)
+runTest('TC-23 Search attempts counting (k+1 optimality proof, disconnected, error)', () => {
+  // Case A: Single edge (1 augmentation, 1 final unsuccessful search = 2 search attempts)
+  const ekSingle = solveEdmondsKarp(NET_SINGLE_EDGE);
+  assert.strictEqual(ekSingle.metrics.augmentations, 1, 'Single edge: exactly 1 augmentation');
+  assert.strictEqual(ekSingle.metrics.searchAttempts, 2, 'Single edge: exactly 2 search attempts (1 success + 1 proof of optimality)');
+
+  const ffSingle = solveFordFulkerson(NET_SINGLE_EDGE);
+  assert.strictEqual(ffSingle.metrics.augmentations, 1, 'FF single edge: 1 augmentation');
+  assert.strictEqual(ffSingle.metrics.searchAttempts, 2, 'FF single edge: 2 search attempts');
+
+  const wpSingle = solveWidestPath(NET_SINGLE_EDGE);
+  assert.strictEqual(wpSingle.metrics.augmentations, 1, 'WP single edge: 1 augmentation');
+  assert.strictEqual(wpSingle.metrics.searchAttempts, 2, 'WP single edge: 2 search attempts');
+
+  // Case B: Disconnected graph (0 augmentations, 1 unsuccessful search attempt)
+  const ekDisc = solveEdmondsKarp(NET_DISCONNECTED);
+  assert.strictEqual(ekDisc.metrics.augmentations, 0, 'Disconnected: 0 augmentations');
+  assert.strictEqual(ekDisc.metrics.searchAttempts, 1, 'Disconnected: exactly 1 search attempt');
+
+  // Case C: CLRS graph (searchAttempts === augmentations + 1 for normal termination)
+  const ekClrs = solveEdmondsKarp(NET_CLRS);
+  assert.strictEqual(ekClrs.metrics.searchAttempts, ekClrs.metrics.augmentations + 1,
+    'EK CLRS: searchAttempts must equal augmentations + 1');
+  const ffClrs = solveFordFulkerson(NET_CLRS);
+  assert.strictEqual(ffClrs.metrics.searchAttempts, ffClrs.metrics.augmentations + 1,
+    'FF CLRS: searchAttempts must equal augmentations + 1');
+  const wpClrs = solveWidestPath(NET_CLRS);
+  assert.strictEqual(wpClrs.metrics.searchAttempts, wpClrs.metrics.augmentations + 1,
+    'WP CLRS: searchAttempts must equal augmentations + 1');
+
+  // Case D: Error network (missing source)
+  const errRes = solveEdmondsKarp({ sink: 'T', edges: [] });
+  assert.strictEqual(errRes.metrics.augmentations, 0, 'Error: 0 augmentations');
+  assert.strictEqual(errRes.metrics.searchAttempts, 0, 'Error: 0 search attempts');
+});
+
+// TC-24 ─ Phase 6: Edge examinations counting convention consistency
+runTest('TC-24 Edge examinations counting convention consistency', () => {
+  // On NET_SINGLE_EDGE (S->T, cap 7):
+  // Search 1: examines S->T (remCap 7 > 0), finds T. (1 examination)
+  // Search 2: examines S->T (remCap 0 <= 1e-9), no node pushed, queue ends. (1 examination)
+  // Total edgeExaminations for BFS = 2
+  const ek = solveEdmondsKarp(NET_SINGLE_EDGE);
+  assert.strictEqual(ek.metrics.edgeExaminations, 2,
+    'EK single edge: exactly 2 edge examinations (1 active + 1 saturated)');
+
+  // On NET_CLRS, all solvers examine a non-trivial number of edges
+  const ff = solveFordFulkerson(NET_CLRS);
+  const wp = solveWidestPath(NET_CLRS);
+  assert.ok(ek.metrics.edgeExaminations >= ek.metrics.searchAttempts, 'EK examinations >= attempts');
+  assert.ok(ff.metrics.edgeExaminations >= ff.metrics.searchAttempts, 'FF examinations >= attempts');
+  assert.ok(wp.metrics.edgeExaminations >= wp.metrics.searchAttempts, 'WP examinations >= attempts');
+});
+
+// TC-25 ─ Phase 6: Step-level execution trace connectivity and residual transitions
+runTest('TC-25 Step-level execution trace connectivity and residual transitions', () => {
+  const res = solveEdmondsKarp(NET_DIAMOND);
+  assert.ok(res.augmentingPaths.length > 0, 'Augmenting paths must exist');
+
+  for (const ap of res.augmentingPaths) {
+    assert.ok(Array.isArray(ap.steps), 'ap.steps must be an array');
+    assert.ok(ap.steps.length >= 1, 'ap.steps must have at least 1 step');
+
+    // Source and sink endpoints
+    assert.strictEqual(ap.steps[0].fromNode, 'S', 'First step must depart source S');
+    assert.strictEqual(ap.steps[ap.steps.length - 1].toNode, 'T', 'Last step must arrive at sink T');
+
+    // Contiguous path connectivity
+    for (let s = 1; s < ap.steps.length; s++) {
+      assert.strictEqual(ap.steps[s].fromNode, ap.steps[s - 1].toNode,
+        `Step ${s} fromNode (${ap.steps[s].fromNode}) must match step ${s-1} toNode (${ap.steps[s-1].toNode})`);
+    }
+
+    // Residual capacity transitions
+    let minResCap = Infinity;
+    for (const step of ap.steps) {
+      assert.ok(step.edgeId, 'step.edgeId must be non-null');
+      assert.ok(typeof step.residualCapBefore === 'number', 'residualCapBefore is a number');
+      assert.ok(typeof step.residualCapAfter === 'number', 'residualCapAfter is a number');
+      assert.ok(step.residualCapBefore >= ap.bottleneck - 1e-9,
+        `residualCapBefore (${step.residualCapBefore}) >= bottleneck (${ap.bottleneck})`);
+      assert.ok(Math.abs(step.residualCapAfter - (step.residualCapBefore - ap.bottleneck)) < 1e-9,
+        'residualCapAfter must equal residualCapBefore - bottleneck');
+      if (step.residualCapBefore < minResCap) minResCap = step.residualCapBefore;
+    }
+
+    // Path bottleneck matches minimum residual capacity along the steps
+    assert.ok(Math.abs(minResCap - ap.bottleneck) < 1e-9,
+      `Path bottleneck (${ap.bottleneck}) must equal min residualCapBefore (${minResCap})`);
+
+    // Saturated step exists
+    const hasSaturatedStep = ap.steps.some(st => Math.abs(st.residualCapAfter) < 1e-9);
+    assert.ok(hasSaturatedStep, 'At least one step in the augmenting path must become saturated');
+  }
+});
+
+// TC-26 ─ Phase 6: Reverse-edge rerouting / flow cancellation explicit step trace
+runTest('TC-26 Reverse-edge rerouting / flow cancellation explicit step trace', () => {
+  // In NET_REROUTE, S->A(10), S->B(10), A->B(1), A->T(10), B->T(10).
+  // If first path pushes flow through A->B (cap 1), then a subsequent path
+  // CANCEL/REROUTES that flow via B->A (the reverse edge of A->B).
+  // We run Ford-Fulkerson which traverses DFS (S->A->B->T bottleneck 1, then rerouting path).
+  const ff = solveFordFulkerson(NET_REROUTE);
+  assert.strictEqual(ff.maxFlow, 20, 'Max flow must be 20');
+
+  let foundReverseStep = false;
+  let reverseStepDetails = null;
+
+  for (const ap of ff.augmentingPaths) {
+    for (const step of ap.steps) {
+      if (step.isReverse === true) {
+        foundReverseStep = true;
+        reverseStepDetails = step;
+        assert.strictEqual(step.direction, 'REVERSE_CANCELLATION',
+          'Reverse edge step must have direction REVERSE_CANCELLATION');
+        assert.strictEqual(step.edgeId, 'e3', 'Reverse edge step must reference original edge e3 (A->B)');
+        assert.strictEqual(step.fromNode, 'B', 'Reverse edge cancellation traverses B->A');
+        assert.strictEqual(step.toNode, 'A', 'Reverse edge cancellation arrives at A');
+      }
+    }
+  }
+
+  assert.ok(foundReverseStep,
+    'Trace must explicitly record a step with isReverse: true and direction: REVERSE_CANCELLATION during rerouting');
+  assert.ok(reverseStepDetails.residualCapBefore > 0, 'Cancellation residual capacity must be > 0');
+});
+
+// TC-27 ─ Phase 6: Max iterations safety cap and INCOMPLETE status handling
+runTest('TC-27 Max iterations safety cap and INCOMPLETE status handling', () => {
+  // NET_TWO_PATHS requires 2 augmentations (S->A->T: 4, S->B->T: 6)
+  const cappedRes = solveEdmondsKarp(NET_TWO_PATHS, { maxIterations: 1 });
+  assert.strictEqual(cappedRes.status, 'INCOMPLETE', 'Status must be INCOMPLETE when capped');
+  assert.strictEqual(cappedRes.terminationReason, 'MAX_ITERATIONS', 'terminationReason must be MAX_ITERATIONS');
+  assert.strictEqual(cappedRes.metrics.isTerminated, true, 'isTerminated must be true');
+  assert.strictEqual(cappedRes.metrics.terminationReason, 'MAX_ITERATIONS', 'metrics terminationReason must match');
+  assert.strictEqual(cappedRes.metrics.augmentations, 1, 'Only 1 augmentation performed');
+  assert.strictEqual(cappedRes.metrics.searchAttempts, 1, 'Only 1 search attempt performed');
+  assert.ok(cappedRes.maxFlow < 10, `Flow (${cappedRes.maxFlow}) must be strictly less than full maxFlow (10)`);
+});
+
+// TC-28 ─ Phase 6: Verifier failure detection on tampered step traces
+runTest('TC-28 Verifier failure detection on tampered step traces', () => {
+  const baseResult = solveEdmondsKarp(NET_DIAMOND);
+  assert.strictEqual(baseResult.isCorrect, true, 'Base result must be correct');
+
+  // Negative Check: Disconnected step in trace
+  const badStepsResult = JSON.parse(JSON.stringify(baseResult));
+  if (badStepsResult.augmentingPaths[0].steps.length >= 2) {
+    badStepsResult.augmentingPaths[0].steps[1].fromNode = 'NON_EXISTENT';
+    const v = verifySolverResult(NET_DIAMOND, badStepsResult);
+    assert.strictEqual(v.isCorrect, false, 'Verifier must fail when a step is disconnected');
+    assert.strictEqual(v.checks.CHECK_9_AUGMENTING_PATHS_VALIDITY.passed, false, 'CHECK_9 must fail');
+  }
+
+  // Negative Check: Step residual capacity before < bottleneck
+  const badCapBeforeResult = JSON.parse(JSON.stringify(baseResult));
+  badCapBeforeResult.augmentingPaths[0].steps[0].residualCapBefore = 0.0001; // less than bottleneck
+  const vCap = verifySolverResult(NET_DIAMOND, badCapBeforeResult);
+  assert.strictEqual(vCap.isCorrect, false, 'Verifier must fail when step residual capacity < bottleneck');
+  assert.strictEqual(vCap.checks.CHECK_9_AUGMENTING_PATHS_VALIDITY.passed, false, 'CHECK_9 must fail');
 });
 
 // ---------------------------------------------------------------------------

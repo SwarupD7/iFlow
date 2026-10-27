@@ -30,9 +30,9 @@ const testSuites = [
     desc: 'Scenario switching, baseline comparisons, % formatting, layout preservation, practice mode lifecycle'
   },
   {
-    name: 'Flow Solvers Module Tests (Phase 5.1 Hardened)',
+    name: 'Flow Solvers Module Tests (Phase 6 Metrics & Traces)',
     file: path.join(__dirname, 'test-flow-solvers.js'),
-    desc: 'Edmonds-Karp, Ford-Fulkerson, Widest-Path solvers — 9-invariant verifier, brute-force cut oracle, multi-edges, invalid input handling'
+    desc: 'Edmonds-Karp, Ford-Fulkerson, Widest-Path solvers — 9-invariant verifier, brute-force cut oracle, metrics & execution trace verification'
   }
 ];
 

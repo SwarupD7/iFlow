@@ -1,5 +1,5 @@
 // ============================================================================
-// FLOW SOLVERS MODULE — Phase 5.1 Hardened Implementation
+// FLOW SOLVERS MODULE — Phase 6 Metrics & Trace Enhanced
 // Application: Campus Evacuation Capacity Analyzer
 // File: js/model/flow-solvers.js
 //
@@ -12,6 +12,13 @@
 //   • verifySolverResult(networkDef, result, options) — 9 rigorous correctness invariants
 //   • exhaustiveMinCutOracle(networkDef)              — 2^(V-2) brute-force min-cut oracle
 //   • buildResidualNetwork(networkDef)                — collision-free composite key residual
+//
+// Phase 6 Metrics & Trace Enhancements:
+//   • High-resolution timing via performance.now() with fallback
+//   • Timing breakdown: initMs (residual build), coreMs (augmentation loop), totalMs
+//   • searchAttempts counts every path search INCLUDING the final unsuccessful one
+//   • edgeExaminations counts every residual slot iterated (including zero-residual rejections)
+//   • Enhanced augmenting path traces with per-step residual details
 //
 // Standard SolverResult Contract:
 // {
@@ -26,16 +33,22 @@
 //   sinkPartition     : string[],   // T-side of min-cut
 //   reachableNodes    : string[],   // backward compatibility alias
 //   edgeFlows         : Array<{ id, source, target, capacity, flow }>,
-//   augmentingPaths   : Array<{ iteration, path, edgeIds, bottleneck, totalFlow }>,
+//   augmentingPaths   : Array<{
+//       iteration, path, edgeIds, bottleneck, totalFlow,
+//       steps: Array<{ edgeId, fromNode, toNode, isReverse, residualCapBefore, residualCapAfter }>
+//   }>,
 //   iterations        : number,
 //   terminationReason : 'NO_AUGMENTING_PATH' | 'MAX_ITERATIONS' | 'ERROR',
 //   metrics: {
-//     augmentations   : number,
-//     searchAttempts  : number,
-//     edgeExaminations: number,
-//     elapsedMs       : number,
-//     isTerminated    : boolean,
-//     terminationReason: string
+//     augmentations      : number,
+//     searchAttempts     : number,   // = augmentations + 1 for normal termination
+//     edgeExaminations   : number,   // every residual slot iterated in inner loop
+//     elapsedMs          : number,   // backward compat alias for totalMs
+//     initMs             : number,   // buildResidualNetwork time
+//     coreMs             : number,   // augmentation loop time
+//     totalMs            : number,   // end-to-end solver time
+//     isTerminated       : boolean,
+//     terminationReason  : string
 //   },
 //   durationMs        : number,
 //   isCorrect         : boolean,
@@ -94,6 +107,27 @@ function _makeMaxHeap(compareFn) {
     isEmpty() { return heap.length === 0; }
   };
 }
+
+// ---------------------------------------------------------------------------
+// Internal: Portable high-resolution timer
+// Uses performance.now() in browsers and Node.js (via perf_hooks), falls
+// back to Date.now() if neither is available.
+// ---------------------------------------------------------------------------
+var _now = (function () {
+  // Browser environment
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return function () { return performance.now(); };
+  }
+  // Node.js environment
+  try {
+    var perfHooks = require('perf_hooks');
+    if (perfHooks && perfHooks.performance && typeof perfHooks.performance.now === 'function') {
+      return function () { return perfHooks.performance.now(); };
+    }
+  } catch (_e) { /* not available */ }
+  // Fallback
+  return function () { return Date.now(); };
+})();
 
 // ---------------------------------------------------------------------------
 // 1. buildResidualNetwork(networkDef)
@@ -228,15 +262,33 @@ function _traceAndBottleneck(pred, src, snk, residual) {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // 3. Internal: augment flow
+// Augments flow along the traced path in the residual network.
+// Returns an array of detailed steps recording per-edge direction,
+// residual capacity before/after, and bottleneck flow pushed.
 // ---------------------------------------------------------------------------
 function _augment(residual, pathEdges, bottleneck) {
-  for (const { fromNode, slotKey } of pathEdges) {
+  const steps = [];
+  for (const { fromNode, slotKey, toNode, edgeId, isReverse } of pathEdges) {
     const slot = residual.get(fromNode).get(slotKey);
+    const residualCapBefore = slot.cap - slot.flow;
     slot.flow += bottleneck;
     const revSlot = residual.get(slot.revNode).get(slot.revKey);
     revSlot.flow -= bottleneck;
+    const residualCapAfter = slot.cap - slot.flow;
+    steps.push({
+      edgeId,
+      fromNode,
+      toNode,
+      isReverse,
+      direction: isReverse ? 'REVERSE_CANCELLATION' : 'FORWARD_AUGMENTATION',
+      residualCapBefore,
+      residualCapAfter,
+      bottleneck
+    });
   }
+  return steps;
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +360,8 @@ function _pathString(src, pathEdges) {
 // ---------------------------------------------------------------------------
 // 6. Internal: error result
 // ---------------------------------------------------------------------------
-function _errResult(algorithm, msg) {
+function _errResult(algorithm, msg, timing) {
+  const t = timing || { initMs: 0, coreMs: 0, totalMs: 0 };
   return {
     status: 'ERROR',
     errorMessage: msg,
@@ -328,11 +381,14 @@ function _errResult(algorithm, msg) {
       augmentations: 0,
       searchAttempts: 0,
       edgeExaminations: 0,
-      elapsedMs: 0,
+      elapsedMs: t.totalMs,
+      initMs: t.initMs,
+      coreMs: t.coreMs,
+      totalMs: t.totalMs,
       isTerminated: true,
       terminationReason: 'ERROR'
     },
-    durationMs: 0,
+    durationMs: t.totalMs,
     isCorrect: false,
     verifierErrors: [msg],
     verifierChecks: {}
@@ -342,10 +398,21 @@ function _errResult(algorithm, msg) {
 // ---------------------------------------------------------------------------
 // 7. Internal: finalise and verify result
 // ---------------------------------------------------------------------------
-function _finalise(algorithm, startTime, maxFlow, augPaths, terminationReason,
+function _finalise(algorithm, timing, maxFlow, augPaths, terminationReason,
                    allOriginalEdges, residual, src, snk, networkDef,
                    searchAttempts, edgeExaminations) {
-  const durationMs = Date.now() - startTime;
+  let initMs = 0;
+  let coreMs = 0;
+  let totalMs = 0;
+
+  if (typeof timing === 'number') {
+    totalMs = Math.max(0, _now() - timing);
+    coreMs = totalMs;
+  } else if (timing && typeof timing === 'object') {
+    initMs = typeof timing.initMs === 'number' ? timing.initMs : 0;
+    coreMs = typeof timing.coreMs === 'number' ? timing.coreMs : 0;
+    totalMs = typeof timing.totalMs === 'number' ? timing.totalMs : (initMs + coreMs);
+  }
 
   // Build per-edge flow records for all original edges
   const edgeFlows = allOriginalEdges.map(e => {
@@ -385,13 +452,16 @@ function _finalise(algorithm, startTime, maxFlow, augPaths, terminationReason,
     terminationReason,
     metrics: {
       augmentations: augPaths.length,
-      searchAttempts: searchAttempts || augPaths.length,
+      searchAttempts: searchAttempts != null ? searchAttempts : augPaths.length,
       edgeExaminations: edgeExaminations || 0,
-      elapsedMs: durationMs,
+      elapsedMs: totalMs,
+      initMs,
+      coreMs,
+      totalMs,
       isTerminated: true,
       terminationReason
     },
-    durationMs,
+    durationMs: totalMs,
     isCorrect: false,
     verifierErrors: [],
     verifierChecks: {}
@@ -415,10 +485,15 @@ function _finalise(algorithm, startTime, maxFlow, augPaths, terminationReason,
 function solveEdmondsKarp(networkDef, options) {
   const MAX_ITER = (options && options.maxIterations) || 10000;
   const algo = 'Edmonds-Karp (BFS)';
-  const t0 = Date.now();
+  const t0 = _now();
 
   const net = buildResidualNetwork(networkDef);
-  if (net.error) return _errResult(algo, net.error);
+  const tInitEnd = _now();
+  const initMs = tInitEnd - t0;
+
+  if (net.error) {
+    return _errResult(algo, net.error, { initMs, coreMs: 0, totalMs: _now() - t0 });
+  }
 
   const { residual, allOriginalEdges, source: src, sink: snk } = net;
   let maxFlow = 0;
@@ -427,6 +502,8 @@ function solveEdmondsKarp(networkDef, options) {
   let searchAttempts = 0;
   let edgeExaminations = 0;
   let terminationReason = 'NO_AUGMENTING_PATH';
+
+  const tCoreStart = _now();
 
   while (iter < MAX_ITER) {
     searchAttempts++;
@@ -440,6 +517,7 @@ function solveEdmondsKarp(networkDef, options) {
       const u = queue[qi++];
       if (!residual.has(u)) continue;
       for (const [slotKey, slot] of residual.get(u)) {
+        // Counting convention: each residual slot iterated in search counts as 1 examination
         edgeExaminations++;
         const v = slot.targetNode;
         if (!visited.has(v) && slot.cap - slot.flow > 1e-9) {
@@ -456,7 +534,7 @@ function solveEdmondsKarp(networkDef, options) {
     const traced = _traceAndBottleneck(pred, src, snk, residual);
     if (!traced || traced.bottleneck <= 1e-9) break;
 
-    _augment(residual, traced.pathEdges, traced.bottleneck);
+    const steps = _augment(residual, traced.pathEdges, traced.bottleneck);
     maxFlow += traced.bottleneck;
     iter++;
     augPaths.push({
@@ -464,13 +542,18 @@ function solveEdmondsKarp(networkDef, options) {
       path: _pathString(src, traced.pathEdges),
       edgeIds: traced.pathEdges.map(pe => pe.edgeId),
       bottleneck: traced.bottleneck,
-      totalFlow: maxFlow
+      totalFlow: maxFlow,
+      steps
     });
 
     if (iter >= MAX_ITER) { terminationReason = 'MAX_ITERATIONS'; break; }
   }
 
-  return _finalise(algo, t0, maxFlow, augPaths, terminationReason,
+  const tCoreEnd = _now();
+  const coreMs = tCoreEnd - tCoreStart;
+  const totalMs = tCoreEnd - t0;
+
+  return _finalise(algo, { initMs, coreMs, totalMs }, maxFlow, augPaths, terminationReason,
                    allOriginalEdges, residual, src, snk, networkDef,
                    searchAttempts, edgeExaminations);
 }
@@ -481,10 +564,15 @@ function solveEdmondsKarp(networkDef, options) {
 function solveFordFulkerson(networkDef, options) {
   const MAX_ITER = (options && options.maxIterations) || 10000;
   const algo = 'Ford-Fulkerson (DFS)';
-  const t0 = Date.now();
+  const t0 = _now();
 
   const net = buildResidualNetwork(networkDef);
-  if (net.error) return _errResult(algo, net.error);
+  const tInitEnd = _now();
+  const initMs = tInitEnd - t0;
+
+  if (net.error) {
+    return _errResult(algo, net.error, { initMs, coreMs: 0, totalMs: _now() - t0 });
+  }
 
   const { residual, allOriginalEdges, source: src, sink: snk } = net;
   let maxFlow = 0;
@@ -493,6 +581,8 @@ function solveFordFulkerson(networkDef, options) {
   let searchAttempts = 0;
   let edgeExaminations = 0;
   let terminationReason = 'NO_AUGMENTING_PATH';
+
+  const tCoreStart = _now();
 
   while (iter < MAX_ITER) {
     searchAttempts++;
@@ -506,6 +596,7 @@ function solveFordFulkerson(networkDef, options) {
       let pushed = false;
       if (residual.has(u)) {
         for (const [slotKey, slot] of residual.get(u)) {
+          // Counting convention: each residual slot iterated in search counts as 1 examination
           edgeExaminations++;
           const v = slot.targetNode;
           if (!visited.has(v) && slot.cap - slot.flow > 1e-9) {
@@ -526,7 +617,7 @@ function solveFordFulkerson(networkDef, options) {
     const traced = _traceAndBottleneck(pred, src, snk, residual);
     if (!traced || traced.bottleneck <= 1e-9) break;
 
-    _augment(residual, traced.pathEdges, traced.bottleneck);
+    const steps = _augment(residual, traced.pathEdges, traced.bottleneck);
     maxFlow += traced.bottleneck;
     iter++;
     augPaths.push({
@@ -534,13 +625,18 @@ function solveFordFulkerson(networkDef, options) {
       path: _pathString(src, traced.pathEdges),
       edgeIds: traced.pathEdges.map(pe => pe.edgeId),
       bottleneck: traced.bottleneck,
-      totalFlow: maxFlow
+      totalFlow: maxFlow,
+      steps
     });
 
     if (iter >= MAX_ITER) { terminationReason = 'MAX_ITERATIONS'; break; }
   }
 
-  return _finalise(algo, t0, maxFlow, augPaths, terminationReason,
+  const tCoreEnd = _now();
+  const coreMs = tCoreEnd - tCoreStart;
+  const totalMs = tCoreEnd - t0;
+
+  return _finalise(algo, { initMs, coreMs, totalMs }, maxFlow, augPaths, terminationReason,
                    allOriginalEdges, residual, src, snk, networkDef,
                    searchAttempts, edgeExaminations);
 }
@@ -551,10 +647,15 @@ function solveFordFulkerson(networkDef, options) {
 function solveWidestPath(networkDef, options) {
   const MAX_ITER = (options && options.maxIterations) || 10000;
   const algo = 'Widest-Path (Priority Queue)';
-  const t0 = Date.now();
+  const t0 = _now();
 
   const net = buildResidualNetwork(networkDef);
-  if (net.error) return _errResult(algo, net.error);
+  const tInitEnd = _now();
+  const initMs = tInitEnd - t0;
+
+  if (net.error) {
+    return _errResult(algo, net.error, { initMs, coreMs: 0, totalMs: _now() - t0 });
+  }
 
   const { residual, allOriginalEdges, source: src, sink: snk } = net;
   let maxFlow = 0;
@@ -563,6 +664,8 @@ function solveWidestPath(networkDef, options) {
   let searchAttempts = 0;
   let edgeExaminations = 0;
   let terminationReason = 'NO_AUGMENTING_PATH';
+
+  const tCoreStart = _now();
 
   while (iter < MAX_ITER) {
     searchAttempts++;
@@ -580,6 +683,7 @@ function solveWidestPath(networkDef, options) {
 
       if (residual.has(u)) {
         for (const [slotKey, slot] of residual.get(u)) {
+          // Counting convention: each residual slot iterated in search counts as 1 examination
           edgeExaminations++;
           const v = slot.targetNode;
           const remCap = slot.cap - slot.flow;
@@ -599,7 +703,7 @@ function solveWidestPath(networkDef, options) {
     const traced = _traceAndBottleneck(pred, src, snk, residual);
     if (!traced || traced.bottleneck <= 1e-9) break;
 
-    _augment(residual, traced.pathEdges, traced.bottleneck);
+    const steps = _augment(residual, traced.pathEdges, traced.bottleneck);
     maxFlow += traced.bottleneck;
     iter++;
     augPaths.push({
@@ -607,13 +711,18 @@ function solveWidestPath(networkDef, options) {
       path: _pathString(src, traced.pathEdges),
       edgeIds: traced.pathEdges.map(pe => pe.edgeId),
       bottleneck: traced.bottleneck,
-      totalFlow: maxFlow
+      totalFlow: maxFlow,
+      steps
     });
 
     if (iter >= MAX_ITER) { terminationReason = 'MAX_ITERATIONS'; break; }
   }
 
-  return _finalise(algo, t0, maxFlow, augPaths, terminationReason,
+  const tCoreEnd = _now();
+  const coreMs = tCoreEnd - tCoreStart;
+  const totalMs = tCoreEnd - t0;
+
+  return _finalise(algo, { initMs, coreMs, totalMs }, maxFlow, augPaths, terminationReason,
                    allOriginalEdges, residual, src, snk, networkDef,
                    searchAttempts, edgeExaminations);
 }
@@ -874,6 +983,41 @@ function verifySolverResult(networkDef, result, options) {
       break;
     }
     sumBottlenecks += bn;
+
+    // Phase 6: Validate step-level trace connectivity and consistency when steps array is present
+    if (Array.isArray(ap.steps) && ap.steps.length > 0) {
+      const firstStep = ap.steps[0];
+      const lastStep = ap.steps[ap.steps.length - 1];
+      if (String(firstStep.fromNode) !== src) {
+        check9Passed = false;
+        check9Msg = `Augmenting path at index ${i} first step does not start at source (${src}) (got ${firstStep.fromNode})`;
+        break;
+      }
+      if (String(lastStep.toNode) !== snk) {
+        check9Passed = false;
+        check9Msg = `Augmenting path at index ${i} last step does not end at sink (${snk}) (got ${lastStep.toNode})`;
+        break;
+      }
+      for (let s = 0; s < ap.steps.length; s++) {
+        const step = ap.steps[s];
+        if (s > 0 && String(step.fromNode) !== String(ap.steps[s - 1].toNode)) {
+          check9Passed = false;
+          check9Msg = `Augmenting path at index ${i} step ${s} disconnected: previous toNode (${ap.steps[s - 1].toNode}) !== fromNode (${step.fromNode})`;
+          break;
+        }
+        if (typeof step.residualCapBefore !== 'number' || step.residualCapBefore < bn - TOL) {
+          check9Passed = false;
+          check9Msg = `Augmenting path at index ${i} step ${s} had insufficient residual capacity before augmentation (${step.residualCapBefore} < ${bn})`;
+          break;
+        }
+        if (typeof step.residualCapAfter !== 'number' || Math.abs(step.residualCapAfter - (step.residualCapBefore - bn)) > TOL) {
+          check9Passed = false;
+          check9Msg = `Augmenting path at index ${i} step ${s} residual capacity update inconsistent: after (${step.residualCapAfter}) !== before - bottleneck (${step.residualCapBefore - bn})`;
+          break;
+        }
+      }
+      if (!check9Passed) break;
+    }
   }
   if (check9Passed && augPaths.length > 0 && Math.abs(sumBottlenecks - reportedMaxFlow) > TOL) {
     check9Passed = false;
